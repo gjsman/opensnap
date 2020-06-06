@@ -19,6 +19,7 @@ class CreateChannelsTable extends Migration
             $table->string('architecture');
             $table->string('name');
             $table->string('released-at');
+            $table->string('created-at');
             $table->string('risk');
             $table->integer('revision');
             $table->integer('snap_id');
@@ -32,6 +33,7 @@ class CreateChannelsTable extends Migration
         $channel["architecture"] = "amd64";
         $channel["name"] = "stable";
         $channel["released-at"] = "2019-04-11T15:27:09.763080+00:00";
+        $channel["created-at"] = "2019-04-05T13:13:26.781919+00:00";
         $channel["risk"] = "stable";
         $channel["revision"] = 93;
         $channel["snap_id"] = 1;
