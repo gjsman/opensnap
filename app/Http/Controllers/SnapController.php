@@ -6,58 +6,82 @@ use Illuminate\Http\Request;
 use App\Http\Resources\SnapCollection;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\URL;
+use GuzzleHttp\Exception\ClientException;
 
 class SnapController extends Controller
 {
-    public function v2_snaps_info(\App\Snap $snap) {
-        $publisher = $snap->Publisher()->get()->first();
-        $channels = $snap->Channels()->get();
-        $channels_sum = 0;
-        $response = ([
-            "channel-map" => [],
-            "default-track" => $snap["default-track"],
-            "name" => $snap["name"],
-            "snap" => [
-                "license" => $snap["license"],
+    public function v2_snaps_info(string $name) {
+        $snap = \App\Snap::where("name", "=", $name)->get()->first();
+        $error = false;
+        if (empty($snap)) {
+            $client = new Client();
+            $url = Url::full();
+            $url = str_replace(Url::to('/')."/api", "https://api.snapcraft.io", $url);
+            try {
+                $request = $client->request("GET", $url, ['headers' => ['Snap-Device-Series' => 16]]);
+            } catch (ClientException $e) {
+                $request = $e->getResponse();
+            }
+            /*$passthrough_response = $passthrough->request('GET', $url, [
+                "headers" => [
+                    "Snap-Device-Series" => "16",
+                ],
+            ]);*/
+            return response()->json(json_decode($request->getBody()->getContents(), true));
+
+        }
+        if (!(empty($snap)) || $error == true) {
+            $publisher = $snap->Publisher()->get()->first();
+            $channels = $snap->Channels()->get();
+            $channels_sum = 0;
+            $response = ([
+                "channel-map" => [],
+                "default-track" => $snap["default-track"],
                 "name" => $snap["name"],
-                "prices" => [],
-                "publisher" => [
-                    "display-name" => $publisher["display-name"],
-                    "id" => $publisher["publisher-id"],
-                    "username" => $publisher["username"],
-                    "validation" => $publisher["validation"],
+                "origin" => "opensnap",
+                "snap" => [
+                    "license" => $snap["license"],
+                    "name" => $snap["name"],
+                    "prices" => [],
+                    "publisher" => [
+                        "display-name" => $publisher["display-name"],
+                        "id" => $publisher["publisher-id"],
+                        "username" => $publisher["username"],
+                        "validation" => $publisher["validation"],
+                    ],
+                    "snap-id" => $snap["snap-id"],
+                    "store-url" => $snap["store-url"],
+                    "summary" => $snap["summary"],
+                    "title" => $snap["title"],
                 ],
                 "snap-id" => $snap["snap-id"],
-                "store-url" => $snap["store-url"],
-                "summary" => $snap["summary"],
-                "title" => $snap["title"],
-            ],
-            "snap-id" => $snap["snap-id"],
-        ]);
-
-        foreach ($channels as $channel)  {
-            $download = $channel->Download()->get()->first();
-            $response["channel-map"][$channels_sum] = ([
-                "channel" => [
-                    "architecture" => $channel["architecture"],
-                    "name" => $channel["name"],
-                    "released-at" => $channel["released-at"],
-                    "risk" => $channel["risk"],
-                    "track" => $channel["track"],
-                ],
-                "created-at" => $channel["created-at"],
-                "download" => [
-                    "deltas" => [],
-                    "sha3-384" => $download["sha3-384"],
-                    "size" => $download["size"],
-                    "url" => $download["url"],
-                ],
-                "revision" => $channel["revision"],
-                "type" => $channel["type"],
-                "version" => $channel["version"],
             ]);
-            $channels_sum += 1;
+    
+            foreach ($channels as $channel)  {
+                $download = $channel->Download()->get()->first();
+                $response["channel-map"][$channels_sum] = ([
+                    "channel" => [
+                        "architecture" => $channel["architecture"],
+                        "name" => $channel["name"],
+                        "released-at" => $channel["released-at"],
+                        "risk" => $channel["risk"],
+                        "track" => $channel["track"],
+                    ],
+                    "created-at" => $channel["created-at"],
+                    "download" => [
+                        "deltas" => [],
+                        "sha3-384" => $download["sha3-384"],
+                        "size" => $download["size"],
+                        "url" => $download["url"],
+                    ],
+                    "revision" => $channel["revision"],
+                    "type" => $channel["type"],
+                    "version" => $channel["version"],
+                ]);
+                $channels_sum += 1;
+            }
         }
+        
 
         return response()->json($response);
     }
@@ -94,6 +118,7 @@ class SnapController extends Controller
                 "summary" => $snap["summary"],
                 "title" => $snap["title"],
                 "website" => "not implemented",
+                "origin" => "opensnap",
             ];
 
             $revision = $snap->Channels()->get()->first();
@@ -124,16 +149,12 @@ class SnapController extends Controller
             $snap_iteration += 1;
         }
         
-        $passthrough = new Client();
+        $client = new Client();
         $url = Url::full();
         $url = str_replace(Url::to('/')."/api", "https://api.snapcraft.io", $url);
-        $passthrough_response = $passthrough->request('GET', $url, [
-            "headers" => [
-                "Snap-Device-Series" => "16",
-            ],
-        ]);
+        $request = $client->request("GET", $url, ['headers' => ['Snap-Device-Series' => 16]]);
 
-        $snaps_passthrough = json_decode($passthrough_response->getBody()->getContents(), true);
+        $snaps_passthrough = json_decode($request->getBody()->getContents(), true);
         $snap_iteration = count($response) + 1;
         foreach ($snaps_passthrough["results"] as $snap) {
             // The prices field isn't an array, it's an object. Weird, as my PHP tool

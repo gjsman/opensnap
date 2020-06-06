@@ -20,7 +20,7 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::prefix('v2')->group(function () {
     Route::prefix('snaps')->group(function () {
-        Route::get('info/{snap:name}', 'SnapController@v2_snaps_info');
+        Route::get('info/{name}', 'SnapController@v2_snaps_info');
         Route::get('find', 'SnapController@v2_snaps_find');
     });
 });
