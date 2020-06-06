@@ -24,3 +24,8 @@ Route::prefix('v2')->group(function () {
         Route::get('find', 'SnapController@v2_snaps_find');
     });
 });
+Route::prefix('v1')->group(function () {
+    Route::prefix('snaps')->group(function () {
+        Route::get('details/{name}', 'SnapController@v1_snaps_details');
+    });
+});

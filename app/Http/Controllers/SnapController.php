@@ -127,7 +127,7 @@ class SnapController extends Controller
                 "base" => null,
                 "channel" => $revision["risk"],
                 "revision" => $revision["revision"],
-                // TODO: Add to DB as option
+                // TODO=> Add to DB as option
                 "confinement" => "classic",
                 "type" => $revision["type"],
                 "version" => $revision["version"],
@@ -168,4 +168,30 @@ class SnapController extends Controller
         }
         return response()->json($response);
     }
+
+    public function v1_snaps_details(string $name) {
+        /**
+         * Only offers passthrough, but even then, `snap info` doesn't work.
+         * I can't find any differences between the returned JSON in Postman.
+         * No idea. Need to figure that out.
+         */
+        $snap = \App\Snap::where("name", "=", $name)->get()->first();
+        $error = false;
+        if (empty($snap)) {
+            $client = new Client();
+            $url = Url::full();
+            $url = str_replace(Url::to('/'), "https://api.snapcraft.io", $url);
+            try {
+                $request = $client->request("GET", $url, ['headers' => ['X-Ubuntu-Series' => 16]]);
+            } catch (ClientException $e) {
+                $request = $e->getResponse();
+            }
+            $snap = json_decode($request->getBody()->getContents(), true);
+            $snap["prices"] = (object) null;
+            return response()->json($snap);
+        }
+        return false;
+    }
+
+
 }
